@@ -1,44 +1,53 @@
-import { OpenAPIHono } from '@hono/zod-openapi'
-import { apiReference } from '@scalar/hono-api-reference'
-import { cors } from 'hono/cors'
-import { logger } from 'hono/logger'
-import { prettyJSON } from 'hono/pretty-json'
-import { Home } from './pages/home'
-import type { Routes } from '#common/types'
-import type { HTTPException } from 'hono/http-exception'
+import { OpenAPIHono } from '@hono/zod-openapi';
+import { apiReference } from '@scalar/hono-api-reference';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
+import { prettyJSON } from 'hono/pretty-json';
+import { Home } from './pages/home';
+import type { Routes } from '#common/types';
+import type { HTTPException } from 'hono/http-exception';
 
 export class App {
-  private app: OpenAPIHono
+  private app: OpenAPIHono;
 
   constructor(routes: Routes[]) {
-    this.app = new OpenAPIHono()
+    this.app = new OpenAPIHono();
 
-    this.initializeGlobalMiddlewares()
-    this.initializeRoutes(routes)
-    this.initializeSwaggerUI()
-    this.initializeRouteFallback()
-    this.initializeErrorHandler()
+    this.initializeGlobalMiddlewares();
+    this.initializeRoutes(routes);
+    this.initializeSwaggerUI();
+    this.initializeRouteFallback();
+    this.initializeErrorHandler();
+
+    // Schedule the ping task to run every 5 minutes
+    setInterval(() => {
+      const url = 'https://jiosaavan-api2.onrender.com/';
+      fetch(url)
+        .then(response => response.json())
+        .then(data => console.log('Ping successful:', data))
+        .catch(error => console.error('Ping failed:', error));
+    }, 30000); // 5 minutes in milliseconds
   }
 
   private initializeRoutes(routes: Routes[]) {
     routes.forEach((route) => {
-      route.initRoutes()
-      this.app.route('/api', route.controller)
-    })
+      route.initRoutes();
+      this.app.route('/api', route.controller);
+    });
 
-    this.app.route('/', Home)
+    this.app.route('/', Home);
   }
 
   private initializeGlobalMiddlewares() {
-    this.app.use(logger())
-    this.app.use(prettyJSON())
-    this.app.use(cors())
+    this.app.use(logger());
+    this.app.use(prettyJSON());
+    this.app.use(cors());
   }
 
   private initializeSwaggerUI() {
     this.app.doc31('/swagger', (c) => {
-      const { protocol: urlProtocol, hostname, port } = new URL(c.req.url)
-      const protocol = c.req.header('x-forwarded-proto') ? `${c.req.header('x-forwarded-proto')}:` : urlProtocol
+      const { protocol: urlProtocol, hostname, port } = new URL(c.req.url);
+      const protocol = c.req.header('x-forwarded-proto') ? `${c.req.header('x-forwarded-proto')}:` : urlProtocol;
 
       return {
         openapi: '3.1.0',
@@ -52,7 +61,7 @@ export class App {
         },
         servers: [{ url: `${protocol}//${hostname}${port ? `:${port}` : ''}`, description: 'Current environment' }]
       }
-    })
+    });
 
     this.app.get(
       '/docs',
@@ -73,23 +82,23 @@ export class App {
         },
         spec: { url: '/swagger' }
       })
-    )
+    );
   }
 
   private initializeRouteFallback() {
     this.app.notFound((ctx) => {
-      return ctx.json({ success: false, message: 'route not found, check docs at https://saavn.dev/docs' }, 404)
-    })
+      return ctx.json({ success: false, message: 'route not found, check docs at https://saavn.dev/docs' }, 404);
+    });
   }
 
   private initializeErrorHandler() {
     this.app.onError((err, ctx) => {
-      const error = err as HTTPException
-      return ctx.json({ success: false, message: error.message }, error.status || 500)
-    })
+      const error = err as HTTPException;
+      return ctx.json({ success: false, message: error.message }, error.status || 500);
+    });
   }
 
   public getApp() {
-    return this.app
+    return this.app;
   }
 }
